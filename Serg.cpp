@@ -1,5 +1,4 @@
-#include "Compressor.h"
-#include "HexDump.h"
+#include "Serg.h"
 
 #include <iostream>
 #include <fstream>
@@ -8,7 +7,7 @@
 int main(int argc, const char *argv[])
 {
 	if(argc != 3) {
-		std::cout << "Minimal LZ* compression utility (with a trivial embeddable decomompressor) Tamás Seller 2019" << std::endl << std::endl;
+		std::cout << "Self Extracting Resource Generator - compression utility - Tamás Seller 2019" << std::endl << std::endl;
 		std::cout << "\tUsage: " << argv[0] << " <input file> <output file>" << std::endl << std::endl;
 		return -1;
 	}
@@ -29,17 +28,17 @@ int main(int argc, const char *argv[])
 	std::unique_ptr<char> data(new char[inLength]);
 	inputFile.read(data.get(), inLength);
 	
+	auto cBuffLength = inLength * 10;
+	std::unique_ptr<char> compressed(new char[cBuffLength]); // XXX has to be large enough, but still...
 	
-	size_t compressedLength = inLength;
-	std::unique_ptr<char> compressed(Compressor::pack(data.get(), compressedLength));
+	SergEncoder enc(compressed.get(), cBuffLength);
+	size_t compressedLength = enc.compress(data.get(), inLength);
 	
-	if(compressedLength > (Compressor::wcCompressedLength(inLength) + 4)) {
-		std::cout << "Internal error - invalid output size !!!" << std::endl;
-		return -1;
-	}
+	std::unique_ptr<char> decompressed(new char[inLength]);
 	
-	size_t decompressedLength = compressedLength;
-	std::unique_ptr<char> decompressed(Compressor::unpack(compressed.get(), decompressedLength));
+	SergDecoder dec(compressed.get(), compressedLength);
+	size_t decompressedLength;
+	dec.decompress(decompressed.get(), decompressedLength);
 	
 	if(decompressedLength != inLength) {
 		std::cout << "Internal error - invalid test output size !!!" << std::endl;

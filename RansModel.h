@@ -2,6 +2,7 @@
 #define _RANSMODEL_H
 
 #include <stdint.h>
+#include <iostream>
 
 struct RansModel 
 {
@@ -23,13 +24,16 @@ public:
 		for(int i = 0; i < 256; i++)
 			sum += counts[i];
 			
+		sum *= presentMult;
+			
 		size_t downscale = 0;
-		while(sum > 0xffff) {
+		while(sum >= 0x10000 * presentMult) {
 			downscale++;
 			sum >>= 1;
+			std::cout << downscale << std::endl;
 		}
 		
-		sum = presentMult * sum + 256;
+		sum += 256;
 			
 		for(int i = 0; i < 256; i++)
 			widths[i] = ((presentMult * counts[i] + 1) << (16 - downscale)) / sum;
@@ -37,6 +41,7 @@ public:
 		starts[0] = 0;
 		for(int i = 0; i < 255; i++)
 			starts[i + 1] = starts[i] + widths[i];
+			
 	}
 
 	struct Symstat {
