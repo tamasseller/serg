@@ -1,9 +1,9 @@
-#ifndef _COMPRESSOR_H
-#define _COMPRESSOR_H
+#ifndef _MLZ_H
+#define _MLZ_H
 
 #include <algorithm>
-#include <string.h>
-#include <malloc.h>
+
+#include <stddef.h>
 
 class MLZBase 
 {
@@ -97,6 +97,8 @@ struct MLZDecoder: MLZBase
 				
 				for(int i = 0; i < l; i++)
 					*out++ = static_cast<Child*>(this)->readLiteral();
+					
+				static_cast<Child*>(this)->afterLiteral();
 			}
 			
 			outLength += l;

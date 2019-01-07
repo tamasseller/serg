@@ -4,6 +4,8 @@
 #include <iostream>
 #include <sstream>
 
+#include <string.h>
+
 class DirectEncoder: public MLZEncoder<DirectEncoder>
 {
 	friend class MLZEncoder<DirectEncoder>;
@@ -58,6 +60,8 @@ class DirectDecoder: public MLZDecoder<DirectDecoder>
 		return length;
 	}
 
+	inline void afterLiteral() { }
+	
 public:
 	inline DirectDecoder(const char* in, size_t length): in(in), length(length) {}
 };

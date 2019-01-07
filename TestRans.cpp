@@ -1,12 +1,14 @@
+#include "Rans.h"
+#include "RansModel.h"
+
+#include "HexDump.h"
+
 #include <iostream>
 #include <string.h>
 #include <stdint.h>
 #include <cstdlib>
 #include <ctime>
 #include <memory>
-
-#include "HexDump.h"
-#include "Rans.h"
 
 struct DummyModel 
 {	
@@ -50,28 +52,56 @@ struct DummyModel
 			
 			cumm += syms[i].width;
 		}
-	}	
+	}
+	
+	void update(){}
+	void add(char){}
+	void substract(char){}
 };
 
+template<class Model>
+void encodeBlock(RansEncoder &encoder, Model &model, const char* top, const char* bottom)
+{
+	for(const char* i = top - 1; i >= bottom; i--)
+		model.substract(*i);
+		
+	model.update();
+	
+	for(const char* i = top - 1; i >= bottom; i--)
+		encoder.put(model, *i);	
+}
+
+template<class Model>
 void compress(const char* in, size_t length, char* out, size_t &outLength)
 {
 	RansEncoder encoder(out, outLength);
-	DummyModel model;
-	const char* i = in + length - 1;
+	Model model;
 	
-	while(i >= in)
-		encoder.put(model, *i--);
+	for(int idx = 0; idx < length; idx++)
+		model.add(in[idx]);
+
+	const auto n = length % 3;
+	encodeBlock(encoder, model, in + length, in + length - n);
+	length -= n;
+	
+	for(const char* i = in + length; i != in; i -= 3)
+		encodeBlock(encoder, model, i, i - 3);
 		
 	outLength = encoder.flush();
 }
 
+template<class Model>
 void decompress(const char* in, size_t length, char* out, size_t outLength)
 {
 	RansDecoder decoder(in);
-	DummyModel model;
+	Model model;
 
-	for(char* o = out; o < out + outLength;)
-		*o++ = decoder.get(model);
+	for(char* o = out; o < out + outLength;) {
+		for(int i = 0; i < 3 && o < out + outLength; i++)
+			*o++ = decoder.get(model);
+			
+		model.update();
+	}
 		
 	decoder.check();
 }
@@ -132,7 +162,8 @@ void doTest(const char* data)
 
 void test(const char* data)
 {
-	doTest<compress, decompress>(data);
+	doTest<compress<DummyModel>, decompress<DummyModel>>(data);
+	doTest<compress<RansModel>, decompress<RansModel>>(data);
 	doTest<compressSwitched, decompressSwitched>(data);
 }
 

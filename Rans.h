@@ -1,5 +1,9 @@
-#ifndef _COMPRESSOR_H
-#define _COMPRESSOR_H
+#ifndef _RANS_H
+#define _RANS_H
+
+#include <stdint.h>
+#include <stddef.h>
+#include <string.h>
 
 class RansBase 
 {
@@ -52,6 +56,8 @@ public:
 class RansDecoder: RansBase
 {
 	uint32_t x;
+	
+protected:
 	const char* in;
 	
 public:
