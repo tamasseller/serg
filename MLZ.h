@@ -39,6 +39,8 @@ struct MLZEncoder: MLZBase
 				last = i;
 			}
 			
+			diff = i - last;
+			
 			const char* bestStart;
 			size_t bestMatchLength = 0;
 			
@@ -57,7 +59,7 @@ struct MLZEncoder: MLZBase
 			
 			if(bestMatchLength >= minRefLength) {
 				if(diff >= minLitLength)
-					static_cast<Child*>(this)->writeLiteral(last, diff);
+			 		static_cast<Child*>(this)->writeLiteral(last, diff);
 				static_cast<Child*>(this)->writeRef(i - bestStart, bestMatchLength);
 				i += bestMatchLength;
 				last = i;
@@ -75,34 +77,38 @@ struct MLZEncoder: MLZBase
 template<class Child>
 struct MLZDecoder: MLZBase
 {	
+protected:
+	inline size_t decompressOne(char* &out)
+	{
+		size_t l;
+
+		char h = static_cast<Child*>(this)->readHeader();
+		if(h < 0) {
+			l = -h + (minRefLength - 1);
+			auto d = static_cast<size_t>(static_cast<unsigned char>(static_cast<Child*>(this)->readDiff())) + minDiff;
+			
+			for(int i = 0; i < l; i++) {
+				*out = out[-d];
+				out++;
+			}
+		} else {
+			l = h + minLitLength;
+			
+			for(int i = 0; i < l; i++)
+				*out++ = static_cast<Child*>(this)->readLiteral();
+				
+			static_cast<Child*>(this)->afterLiteral();
+		}
+		
+		return l;
+	}
+public:
 	inline void decompress(char* out, size_t &outLength)
 	{
 		outLength = 0;
 		
 		while(static_cast<Child*>(this)->hasMoreReadable())
-		{
-			size_t l;
-
-			char h = static_cast<Child*>(this)->readHeader();
-			if(h < 0) {
-				l = -h + (minRefLength - 1);
-				auto d = static_cast<size_t>(static_cast<unsigned char>(static_cast<Child*>(this)->readDiff())) + minDiff;
-				
-				for(int i = 0; i < l; i++) {
-					*out = out[-d];
-					out++;
-				}
-			} else {
-				l = h + minLitLength;
-				
-				for(int i = 0; i < l; i++)
-					*out++ = static_cast<Child*>(this)->readLiteral();
-					
-				static_cast<Child*>(this)->afterLiteral();
-			}
-			
-			outLength += l;
-		}
+			outLength += decompressOne(out);
 	}
 };
 

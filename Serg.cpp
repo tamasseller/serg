@@ -31,19 +31,14 @@ int main(int argc, const char *argv[])
 	auto cBuffLength = inLength * 10;
 	std::unique_ptr<char> compressed(new char[cBuffLength]); // XXX has to be large enough, but still...
 	
+	float entropy;
 	SergEncoder enc(compressed.get(), cBuffLength);
-	size_t compressedLength = enc.compress(data.get(), inLength);
+	size_t compressedLength = enc.compress(data.get(), inLength, entropy);
 	
 	std::unique_ptr<char> decompressed(new char[inLength]);
 	
 	SergDecoder dec(compressed.get(), compressedLength);
-	size_t decompressedLength;
-	dec.decompress(decompressed.get(), decompressedLength);
-	
-	if(decompressedLength != inLength) {
-		std::cout << "Internal error - invalid test output size !!!" << std::endl;
-		return -1;
-	}
+	dec.decompress(decompressed.get(), inLength);
 
 	if(memcmp(decompressed.get(), data.get(), inLength) != 0) {
 		std::cout << "Internal error - invalid test output data !!!" << std::endl;
@@ -58,7 +53,8 @@ int main(int argc, const char *argv[])
 	
 	outputFile.write(compressed.get(), compressedLength);
 	
-	std::cout << inputFileName << " -> " << outputFileName << "  " << ((100 * compressedLength) / inLength) << "%" << std::endl;
+	std::cout << inputFileName << " -> " << outputFileName << "  " << ((100 * compressedLength) / inLength) << "%"
+		<< " (final literal entropy: " << (entropy / (float)inLength) << " bits/byte)" << std::endl;
 	
 	return 0;
 }

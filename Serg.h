@@ -7,6 +7,8 @@
 
 #include <vector>
 
+#include <math.h>
+
 class SergEncoder: MLZEncoder<SergEncoder>, RansEncoder
 {
 	friend class MLZEncoder<SergEncoder>;
@@ -73,13 +75,22 @@ class SergEncoder: MLZEncoder<SergEncoder>, RansEncoder
 public:
 	inline SergEncoder(char* start, size_t length): RansEncoder(start, length) {}
 	
-	inline size_t compress(const char* const in, size_t length)
+	inline size_t compress(const char* const in, size_t length, float& finalEntropy)
 	{
 		MLZEncoder<SergEncoder>::compress(in, length);
 		RansModel model;
 		
 		for(auto &x: blocks)
 			x->feed(model);
+		
+		int sum = 0;	
+		for(auto &x: model.counts)
+			sum += x;
+			
+		finalEntropy = 0.0f;
+		for(auto &x: model.counts)
+			if(x)
+				finalEntropy -= log2((double)x / (double)sum) * (double) x;
 		
 		for(auto r = blocks.rbegin(); r != blocks.rend(); r++)
 			(*r)->process(*this, model);
@@ -92,7 +103,6 @@ class SergDecoder: public MLZDecoder<SergDecoder>, RansDecoder
 {
 	friend class MLZDecoder<SergDecoder>;
 		
-	const char* end;
 	RansModel model;
 	
 	inline char readHeader() {
@@ -107,16 +117,19 @@ class SergDecoder: public MLZDecoder<SergDecoder>, RansDecoder
 		return this->get(model);
 	}
 	
-	inline bool hasMoreReadable() {
-		return in < end;
-	}
-
 	inline void afterLiteral() {
 		model.update();
 	}
 
 public:
-	inline SergDecoder(const char* in, size_t length): RansDecoder(in), end(in + length) {}
+	inline SergDecoder(const char* in, size_t length): RansDecoder(in) {}
+	
+	inline void decompress(char* out, size_t length) {
+		size_t outLength = 0;
+		
+		while(outLength < length)
+			outLength += decompressOne(out);
+	}
 };
 
 #endif

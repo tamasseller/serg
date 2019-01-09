@@ -6,8 +6,6 @@
 
 struct RansModel 
 {
-	static constexpr auto presentMult = 8;
-	
 	uint32_t counts[256] = {0,};
 	uint16_t widths[256] = {0,};
 	uint16_t starts[256] = {0,};
@@ -20,28 +18,40 @@ public:
 	void update()
 	{
 		uint32_t sum = 0;
-		
 		for(int i = 0; i < 256; i++)
 			sum += counts[i];
-			
-		sum *= presentMult;
-			
+
 		size_t downscale = 0;
-		while(sum >= 0x10000 * presentMult) {
+		while(sum >= 0x10000) {
 			downscale++;
-			sum >>= 1;
-			std::cout << downscale << std::endl;
+			sum -= sum >> 1;
+		}
+
+		if(sum) {
+			const uint32_t factor = (1 << (16 - downscale)) - 256;
+
+			for(int i = 0; i < 256; i++)
+				widths[i] = counts[i] * factor / sum + 1;
+		} else {
+			for(int i = 0; i < 256; i++)
+				widths[i] = 256;
+		}
+
+		uint32_t cumm = 0;
+		for(int i = 0; i < 255; i++) {
+			starts[i] = cumm;
+			cumm += widths[i];
 		}
 		
-		sum += 256;
-			
-		for(int i = 0; i < 256; i++)
-			widths[i] = ((presentMult * counts[i] + 1) << (16 - downscale)) / sum;
-			
-		starts[0] = 0;
-		for(int i = 0; i < 255; i++)
-			starts[i + 1] = starts[i] + widths[i];
-			
+		uint32_t min = -1u, max = 0;	
+		for(int i = 0; i < 255; i++) {
+			if(min > widths[i])
+				min = widths[i];
+			if(max < widths[i])
+				max = widths[i];
+		}
+
+//		std::cout << std::hex << min << " " << std::hex << max << std::endl;
 	}
 
 	struct Symstat {

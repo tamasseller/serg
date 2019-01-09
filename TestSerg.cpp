@@ -13,37 +13,43 @@ void test(const char* data)
 {	
 	const size_t inLength = strlen(data);
 	char compressed[2 * 1024 * 1024] = {0,}, decompressed[2 * 1024 * 1024] = {0,};
-	size_t decompressedLength;
 	
+	float entropy;
 	SergEncoder enc(compressed, sizeof(compressed));
-	size_t compressedLength = enc.compress(data, inLength);
+	size_t compressedLength = enc.compress(data, inLength, entropy);
 	
 	SergDecoder dec(compressed, compressedLength);
-	dec.decompress(decompressed, decompressedLength);
-
-	if(decompressedLength != inLength) 
-	{
-//		std::cout << "Wrong decompressed length (" << decompressedLength << ") for input: '" << data << "'" << std::endl;
-
-		std::cout << std::endl << "Compressed:" << std::endl;
-//		hexDump(compressed, compressedLength);
-
-		std::cout << std::endl << "Decompressed:" << std::endl;
-//		hexDump(decompressed, decompressedLength);
-		
-		std::cout << std::endl;
-		exit(-1);
-	}
+	dec.decompress(decompressed, inLength);
 	
 	if(memcmp(data, decompressed, inLength) != 0) 
 	{
-		std::cout << "In-out data mismatch for input: '" << data << "'" << std::endl;
+		if(inLength < 1024) {
+			std::cout << "In-out data mismatch for input: '" << data << "'" << std::endl;
+			
+			std::cout << std::endl << "Compressed:" << std::endl;
+			hexDump(compressed, compressedLength);
+
+			std::cout << std::endl << "Decompressed:" << std::endl;
+			hexDump(decompressed, inLength);
+		} else
+			std::cout << "In-out data mismatch" << std::endl;
 		
-		std::cout << std::endl << "Compressed:" << std::endl;
-		hexDump(compressed, compressedLength);
-		
-		std::cout << std::endl << "Decompressed:" << std::endl;
-		hexDump(decompressed, decompressedLength);
+		for(int i = 0; i < inLength; i++) {
+			if(data[i] != decompressed[i]) {
+				std::cout << std::endl << "First difference at 0x" << std::hex << i << std::endl;
+				
+				size_t offset = std::max(0, (i - 15) & ~15);
+				size_t end = std::min(inLength, offset + 48);
+				
+				std::cout << std::endl << "Input +0x"  << std::hex << offset << ":" << std::endl;
+				hexDump(data + offset, end - offset);
+
+				std::cout << std::endl << "Decompressed  +0x"  << std::hex << offset << ":" << std::endl;
+				hexDump(decompressed + offset, end - offset);
+				
+				break;
+			}
+		}	
 		
 		std::cout << std::endl;
 		exit(-1);
@@ -96,14 +102,14 @@ int main()
 
 	std::string temp2 = temp + ss.str();
 	test(temp.c_str());
-	
+		
 	std::srand(0x1337);
     
     prngTest(8);
     prngTest(16);
     prngTest(128);
     prngTest(1024);
-    prngTest(40*1024);
+    prngTest(1024*1024);
 
 	return 0;
 }
