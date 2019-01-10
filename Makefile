@@ -1,13 +1,7 @@
-all: test-mlz test-rans test-serg serg
+all: test/test serg
 
-test-rans: TestRans.cpp *.h
-	g++ -O0 -g3 $< -o $@
+test/test: test/*.cpp lib/* test/*.h
+	g++ -O0 -g3 test/*.cpp -o $@ -Ilib
 
-test-mlz: TestMLZ.cpp *.h
-	g++ -O0 -g3 $< -o $@
-
-test-serg: TestSerg.cpp *.h
-	g++ -O0 -g3 $< -o $@
-
-serg: Serg.cpp *.h
-	g++ -O0 -g3 $< -o $@
+serg: util/Serg.cpp lib/* 
+	g++ -O0 -g3 $< -o $@ -Ilib

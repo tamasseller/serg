@@ -4,6 +4,8 @@
 #include <fstream>
 #include <memory>
 
+#include "../test/HexDump.h"
+
 int main(int argc, const char *argv[])
 {
 	if(argc != 3) {
@@ -22,26 +24,25 @@ int main(int argc, const char *argv[])
 		return -1;
 	}
 		
-	size_t inLength = inputFile.tellg();
+	const size_t inLength = inputFile.tellg();
 	inputFile.seekg (0, std::ios::beg);
 	
 	std::unique_ptr<char> data(new char[inLength]);
 	inputFile.read(data.get(), inLength);
 	
-	auto cBuffLength = inLength * 10;
+	const auto cBuffLength = inLength * 10;
 	std::unique_ptr<char> compressed(new char[cBuffLength]); // XXX has to be large enough, but still...
 	
-	float entropy;
 	SergEncoder enc(compressed.get(), cBuffLength);
-	size_t compressedLength = enc.compress(data.get(), inLength, entropy);
-	
+	size_t compressedLength = enc.compress(data.get(), inLength);
+
 	std::unique_ptr<char> decompressed(new char[inLength]);
 	
-	SergDecoder dec(compressed.get(), compressedLength);
+	SergDecoder dec(compressed.get());
 	dec.decompress(decompressed.get(), inLength);
-
+	
 	if(memcmp(decompressed.get(), data.get(), inLength) != 0) {
-		std::cout << "Internal error - invalid test output data !!!" << std::endl;
+		std::cout << "Internal error - invalid test output data !!!" << std::endl;		
 		return -1;
 	}
 	
@@ -53,8 +54,7 @@ int main(int argc, const char *argv[])
 	
 	outputFile.write(compressed.get(), compressedLength);
 	
-	std::cout << inputFileName << " -> " << outputFileName << "  " << ((100 * compressedLength) / inLength) << "%"
-		<< " (final literal entropy: " << (entropy / (float)inLength) << " bits/byte)" << std::endl;
+	std::cout << inputFileName << " -> " << outputFileName << "  " << ((100 * compressedLength) / inLength) << "%" << std::endl;
 	
 	return 0;
 }

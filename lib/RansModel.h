@@ -10,6 +10,7 @@ struct RansModel
 	uint16_t widths[256] = {0,};
 	uint16_t starts[256] = {0,};
 	
+	int x = 0;
 public:
 	inline RansModel() {
 		update();
@@ -17,13 +18,17 @@ public:
 	
 	void update()
 	{
-		uint32_t sum = 0;
-		for(int i = 0; i < 256; i++)
+		uint32_t sum = 0, max = 0;
+		for(int i = 0; i < 256; i++) {
 			sum += counts[i];
+			if(max < counts[i])
+				max = counts[i];
+		}			
 
 		size_t downscale = 0;
-		while(sum >= 0x10000) {
+		while(max >= 0x10000) {
 			downscale++;
+			max >>= 1;
 			sum -= sum >> 1;
 		}
 
@@ -38,20 +43,10 @@ public:
 		}
 
 		uint32_t cumm = 0;
-		for(int i = 0; i < 255; i++) {
+		for(int i = 0; i < 256; i++) {
 			starts[i] = cumm;
 			cumm += widths[i];
 		}
-		
-		uint32_t min = -1u, max = 0;	
-		for(int i = 0; i < 255; i++) {
-			if(min > widths[i])
-				min = widths[i];
-			if(max < widths[i])
-				max = widths[i];
-		}
-
-//		std::cout << std::hex << min << " " << std::hex << max << std::endl;
 	}
 
 	struct Symstat {

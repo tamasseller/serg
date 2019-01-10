@@ -1,13 +1,12 @@
-#include "Rans.h"
+#include "RansEncoder.h"
+#include "RansDecoder.h"
 #include "RansModel.h"
 
-#include "HexDump.h"
+#include "TestCommon.h"
 
 #include <iostream>
 #include <string.h>
 #include <stdint.h>
-#include <cstdlib>
-#include <ctime>
 #include <memory>
 
 struct DummyModel 
@@ -133,52 +132,17 @@ void decompressSwitched(const char* in, size_t length, char* out, size_t outLeng
 	decoder.check();
 }
 
-
-template<void (*compress)(const char*, size_t, char*, size_t&), void (*decompress)(const char*, size_t, char* out, size_t)>
-void doTest(const char* data)
-{
-	const size_t inLength = strlen(data);
-	char compressed[4096] = {0,}, decompressed[4096] = {0,};
-	size_t compressedLength = sizeof(compressed);
-	
-	compress(data, inLength, compressed, compressedLength);
-	
-	decompress(compressed, compressedLength, decompressed, inLength);
-	
-	if(memcmp(data, decompressed, inLength) != 0) 
-	{
-		std::cout << "In-out data mismatch for input: '" << data << "'" << std::endl;
-		
-		std::cout << std::endl << "Compressed:" << std::endl;
-		hexDump(compressed, compressedLength);
-		
-		std::cout << std::endl << "Decompressed:" << std::endl;
-		hexDump(decompressed, inLength);
-		
-		std::cout << std::endl;
-		exit(-1);
-	}
+static inline void test(const char* str) {
+	compDecompTestRun<compress<DummyModel>, decompress<DummyModel>>(str);
+	compDecompTestRun<compress<RansModel>, decompress<RansModel>>(str);
+	compDecompTestRun<compressSwitched, decompressSwitched>(str);
 }
 
-void test(const char* data)
-{
-	doTest<compress<DummyModel>, decompress<DummyModel>>(data);
-	doTest<compress<RansModel>, decompress<RansModel>>(data);
-	doTest<compressSwitched, decompressSwitched>(data);
+static inline void prngTest(int n) {
+	prngCompDecompTestRun<compress<RansModel>, decompress<RansModel>>(n);
 }
 
-void prngTest(int n)
-{
-	std::unique_ptr<char> b(new char[n+1]);
-	
-	for(int i=0; i < n; i++)
-		b.get()[i] = 'a' + (std::rand() % 4);
-		
-	b.get()[n] = '\0';
-	test(b.get());
-}
-
-int main()
+int runRansTests()
 {
 	test("aaaa");
 	test("bbbb");
@@ -191,12 +155,13 @@ int main()
 	test("abbcccbba");
 	test("abcdbcda");
 	
-    std::srand(0x1337);
-    
+	compDecompTestRun<compress<RansModel>, decompress<RansModel>>("\xfe");
+	    
     prngTest(8);
     prngTest(16);
     prngTest(128);
     prngTest(1024);
+    prngTest(1024*1024);
     
     return 0;
 }
