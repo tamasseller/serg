@@ -4,4 +4,4 @@ test/test: test/*.cpp lib/* test/*.h
 	g++ -O0 -g3 test/*.cpp -o $@ -Ilib
 
 serg: util/Serg.cpp lib/* 
-	g++ -O0 -g3 $< -o $@ -Ilib
+	g++ -Os $< -o $@ -Ilib

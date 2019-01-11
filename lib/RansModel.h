@@ -16,7 +16,7 @@ public:
 		update();
 	}
 	
-	void update()
+	inline void update()
 	{
 		uint32_t sum = 0, max = 0;
 		for(int i = 0; i < 256; i++) {
@@ -54,19 +54,19 @@ public:
 		inline Symstat(size_t width, size_t cummulated): width(width), cummulated(cummulated) {}
 	};
 	
-	void add(char c) {
+	inline void add(char c) {
 		counts[(unsigned char)c]++;
 	}
 	
-	void substract(char c) {
+	inline void substract(char c) {
 		counts[(unsigned char)c]--;
 	}
 
-	Symstat predict(char c) {
+	inline Symstat predict(char c) {
 		return Symstat(widths[(unsigned char)c], starts[(unsigned char)c]);
 	}
 
-	Symstat identify(size_t in, char &c)
+	inline Symstat identify(size_t in, char &c)
 	{
 		size_t bottom=0, top=255;
 		

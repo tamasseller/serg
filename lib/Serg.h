@@ -10,27 +10,12 @@
 #include <vector>
 #include <math.h>
 
-struct StaticModel: RansModel
-{
-	StaticModel()
-	{
-		for(int i=0; i<256; i++) {
-			char c = i;
-			int sq = (c * c) >> 10;
-			if(sq <= 15)
-				counts[i] = 1 << (15 - sq);
-		}
-			
-		update();
-	}
-};
-
 class SergEncoder: MlzEncoder<SergEncoder>, RansEncoder
 {
 	friend class MlzEncoder<SergEncoder>;
 	
 	struct BlockHandler {
-		virtual void feed(RansModel& litModel, RansModel& diffModel) = 0;
+		virtual void feed(RansModel& litModel, RansModel& diffModel, RansModel& headModel) = 0;
 		virtual void process(RansEncoder& encoder, RansModel& litModel, RansModel& diffModel, RansModel& headModel) = 0;
 	};
 
@@ -40,10 +25,12 @@ class SergEncoder: MlzEncoder<SergEncoder>, RansEncoder
 		
 		inline LiteralHandler(char head, const char *data, size_t length): head(head), data(data), length(length) {}
 
-		inline virtual void feed(RansModel& litModel, RansModel& diffModel)
-		{
+		inline virtual void feed(RansModel& litModel, RansModel& diffModel, RansModel& headModel)
+		{			
 			for(const char* i = data; i < data + length; i++)
 				litModel.add(*i);
+				
+			headModel.add(head);
 		}
 
 		inline virtual void process(RansEncoder& encoder, RansModel& litModel, RansModel& diffModel, RansModel& headModel)
@@ -56,6 +43,8 @@ class SergEncoder: MlzEncoder<SergEncoder>, RansEncoder
 			for(const char* i = data + length - 1; i >= data; i--)
 				encoder.put(litModel, *i);	
 				
+			headModel.substract(head);
+			headModel.update();
 			encoder.put(headModel, head);
 		}
 	};
@@ -65,8 +54,9 @@ class SergEncoder: MlzEncoder<SergEncoder>, RansEncoder
 		
 		inline RefHandler(char head, char diff): head(head), diff(diff) {}
 
-		inline virtual void feed(RansModel& litModel, RansModel& diffModel) {
+		inline virtual void feed(RansModel& litModel, RansModel& diffModel, RansModel& headModel) {
 			diffModel.add(diff);
+			headModel.add(head);
 		}
 		
 		inline virtual void process(RansEncoder& encoder, RansModel& litModel, RansModel& diffModel, RansModel& headModel)
@@ -74,6 +64,9 @@ class SergEncoder: MlzEncoder<SergEncoder>, RansEncoder
 			diffModel.substract(diff);		
 			diffModel.update();
 			encoder.put(diffModel, diff);
+
+			headModel.substract(head);
+			headModel.update();
 			encoder.put(headModel, head);
 		}
 	};
@@ -110,11 +103,10 @@ public:
 	inline size_t compress(const char* const in, size_t length)
 	{
 		MlzEncoder<SergEncoder>::compress(in, length);
-		RansModel litModel, diffModel;
-		StaticModel headModel;
+		RansModel litModel, diffModel, headModel;
 		
 		for(auto &x: blocks)
-			x->feed(litModel, diffModel);
+			x->feed(litModel, diffModel, headModel);
 
 		for(auto r = blocks.rbegin(); r != blocks.rend(); r++)
 			(*r)->process(*this, litModel, diffModel, headModel);
@@ -127,11 +119,12 @@ class SergDecoder: public MlzDecoder<SergDecoder>, RansDecoder
 {
 	friend class MlzDecoder<SergDecoder>;
 		
-	RansModel litModel, diffModel;
-	StaticModel headModel;
+	RansModel litModel, diffModel, headModel;
 	
 	inline char readHeader() {
-		return this->get(headModel);
+		auto ret = this->get(headModel);
+		headModel.update();
+		return ret;
 	}
 
 	inline char readDiff() {
