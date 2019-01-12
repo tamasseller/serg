@@ -6,9 +6,16 @@
 #include <iomanip>
 #include <fstream>
 #include <memory>
-#include <time.h>
+#include <sys/time.h>
 
 #include "../test/HexDump.h"
+
+__attribute__((noinline))
+void doDecompress(const char* compressed, char* decompressed, size_t inLength)
+{	
+	SergStaticDecoder dec(compressed);
+	dec.decompress(decompressed, inLength);
+}
 
 int main(int argc, const char *argv[])
 {
@@ -43,8 +50,7 @@ int main(int argc, const char *argv[])
 	std::unique_ptr<char> decompressed(new char[inLength]);
 	
 	clock_t begin = clock();
-	SergStaticDecoder dec(compressed.get());
-	dec.decompress(decompressed.get(), inLength);
+	doDecompress(compressed.get(), decompressed.get(), inLength);
 	double timeSpent = 1000.0 * (double)(clock() - begin) / CLOCKS_PER_SEC;
 	
 	if(memcmp(decompressed.get(), data.get(), inLength) != 0) {
