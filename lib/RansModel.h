@@ -4,16 +4,70 @@
 #include <stdint.h>
 #include <iostream>
 
-struct RansModel 
+struct RansModelBase
 {
-	uint32_t counts[256] = {0,};
 	uint16_t widths[256] = {0,};
 	uint16_t starts[256] = {0,};
 	
-	int x = 0;
+	inline void updateStarts()
+	{
+		uint32_t cumm = 0;
+		for(int i = 0; i < 256; i++) {
+			starts[i] = cumm;
+			cumm += widths[i];
+		}
+	}
+	
+	struct Symstat {
+		size_t width, cummulated;
+		inline Symstat(size_t width, size_t cummulated): width(width), cummulated(cummulated) {}
+	};
+	
+	inline Symstat predict(char c) {
+		return Symstat(widths[(unsigned char)c], starts[(unsigned char)c]);
+	}
+
+	inline Symstat identify(size_t in, char &c)
+	{
+		size_t bottom=0, top=255;
+		
+		while(bottom != top)
+		{
+			size_t mid = (bottom + top + 1) / 2;
+			
+			if(in < starts[mid])
+				top = mid-1;
+			else
+				bottom = mid;
+		}
+
+		c = bottom;
+		return Symstat(widths[bottom], starts[bottom]);
+	}
+};
+
+struct RansModel: RansModelBase
+{
+	uint32_t counts[256] = {0,};
+	
 public:
+	inline void add(char c) {
+		counts[(unsigned char)c]++;
+	}
+	
+	inline void substract(char c) {
+		counts[(unsigned char)c]--;
+	}
+
 	inline RansModel() {
 		update();
+	}
+	
+	inline Symstat identify(size_t in, char &c)
+	{
+		auto ret = RansModelBase::identify(in, c);
+		counts[(unsigned char)c]++;
+		return ret;
 	}
 	
 	inline void update()
@@ -42,47 +96,7 @@ public:
 				widths[i] = 256;
 		}
 
-		uint32_t cumm = 0;
-		for(int i = 0; i < 256; i++) {
-			starts[i] = cumm;
-			cumm += widths[i];
-		}
-	}
-
-	struct Symstat {
-		size_t width, cummulated;
-		inline Symstat(size_t width, size_t cummulated): width(width), cummulated(cummulated) {}
-	};
-	
-	inline void add(char c) {
-		counts[(unsigned char)c]++;
-	}
-	
-	inline void substract(char c) {
-		counts[(unsigned char)c]--;
-	}
-
-	inline Symstat predict(char c) {
-		return Symstat(widths[(unsigned char)c], starts[(unsigned char)c]);
-	}
-
-	inline Symstat identify(size_t in, char &c)
-	{
-		size_t bottom=0, top=255;
-		
-		while(bottom != top)
-		{
-			size_t mid = (bottom + top + 1) / 2;
-			
-			if(in < starts[mid])
-				top = mid-1;
-			else
-				bottom = mid;
-		}
-
-		c = bottom;
-		counts[bottom]++;
-		return Symstat(widths[bottom], starts[bottom]);
+		updateStarts();
 	}
 };
 

@@ -1,8 +1,12 @@
 #include "Serg.h"
+#include "SergStatic.h"
+#include "SergMixed.h"
 
 #include <iostream>
+#include <iomanip>
 #include <fstream>
 #include <memory>
+#include <time.h>
 
 #include "../test/HexDump.h"
 
@@ -33,13 +37,15 @@ int main(int argc, const char *argv[])
 	const auto cBuffLength = inLength * 10;
 	std::unique_ptr<char> compressed(new char[cBuffLength]); // XXX has to be large enough, but still...
 	
-	SergEncoder enc(compressed.get(), cBuffLength);
+	SergStaticEncoder enc(compressed.get(), cBuffLength);
 	size_t compressedLength = enc.compress(data.get(), inLength);
 
 	std::unique_ptr<char> decompressed(new char[inLength]);
 	
-	SergDecoder dec(compressed.get());
+	clock_t begin = clock();
+	SergStaticDecoder dec(compressed.get());
 	dec.decompress(decompressed.get(), inLength);
+	double timeSpent = 1000.0 * (double)(clock() - begin) / CLOCKS_PER_SEC;
 	
 	if(memcmp(decompressed.get(), data.get(), inLength) != 0) {
 		std::cout << "Internal error - invalid test output data !!!" << std::endl;		
@@ -54,7 +60,9 @@ int main(int argc, const char *argv[])
 	
 	outputFile.write(compressed.get(), compressedLength);
 	
-	std::cout << inputFileName << " -> " << outputFileName << "  " << ((100 * compressedLength) / inLength) << "%" << std::endl;
+	std::cout << inputFileName << " -> " << outputFileName << "  " 
+		<< std::fixed << std::setprecision(2) << ((100.0f * compressedLength) / inLength) << "%" 
+		<< " decompressed in " << timeSpent << "ms" << std::endl;
 	
 	return 0;
 }

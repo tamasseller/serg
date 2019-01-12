@@ -1,29 +1,38 @@
 #include "TestCommon.h"
 #include "Serg.h"
+#include "SergStatic.h"
+#include "SergMixed.h"
+
 
 #include <iostream>
 #include <sstream>
 #include <string.h>
 #include <memory>
 
+template<class Coder>
 static inline void c(const char* data, size_t inLength, char* compressed, size_t& compressedLength) 
 {
-	SergEncoder enc(compressed, compressedLength);
+	Coder enc(compressed, compressedLength);
 	compressedLength = enc.compress(data, inLength);	
 }
 
+template<class Coder>
 static inline void d(const char* compressed, size_t compressedLength, char* decompressed, size_t decompressedLength) 
 {
-	SergDecoder dec(compressed);
+	Coder dec(compressed);
 	dec.decompress(decompressed, decompressedLength);
 }
 
 static inline void test(const char* str) {
-	compDecompTestRun<c, d>(str);
+	compDecompTestRun<c<SergEncoder>, d<SergDecoder>>(str);
+	compDecompTestRun<c<SergStaticEncoder>, d<SergStaticDecoder>>(str);
+	compDecompTestRun<c<SergMixedEncoder>, d<SergMixedDecoder>>(str);
 }
 
 static inline void prngTest(int n) {
-	prngCompDecompTestRun<c, d>(n);
+	prngCompDecompTestRun<c<SergEncoder>, d<SergDecoder>>(n);
+	prngCompDecompTestRun<c<SergStaticEncoder>, d<SergStaticDecoder>>(n);
+	prngCompDecompTestRun<c<SergMixedEncoder>, d<SergMixedDecoder>>(n);
 }
 
 int runSergTests()
